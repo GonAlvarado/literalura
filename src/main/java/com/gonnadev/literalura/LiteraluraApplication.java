@@ -3,8 +3,6 @@ package com.gonnadev.literalura;
 import com.gonnadev.literalura.principal.Principal;
 import com.gonnadev.literalura.repository.AutorRepository;
 import com.gonnadev.literalura.repository.LibroRepository;
-import com.gonnadev.literalura.service.ConsumoAPI;
-import com.gonnadev.literalura.service.ConvierteDatos;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.CommandLineRunner;
 import org.springframework.boot.SpringApplication;

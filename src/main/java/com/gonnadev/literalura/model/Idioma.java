@@ -1,9 +1,9 @@
 package com.gonnadev.literalura.model;
 
 public enum Idioma {
-    ESPANOL("es", "Español"),
-    INGLES("en", "Ingles"),
-    FRANCES("fr", "Frances");
+    Espanol("es", "Español"),
+    Ingles("en", "Inglés"),
+    Frances("fr", "Francés");
 
     private String idiomaOmdb;
     private String idiomaEspanol;

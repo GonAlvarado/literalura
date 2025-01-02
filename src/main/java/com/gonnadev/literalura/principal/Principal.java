@@ -10,7 +10,7 @@ import java.util.*;
 import java.util.stream.Collectors;
 
 public class Principal {
-    private Scanner teclado = new Scanner(System.in);
+    private final Scanner teclado = new Scanner(System.in);
     private static final String URL_BASE = "https://gutendex.com/books/";
     ConsumoAPI consumoAPI = new ConsumoAPI();
     ConvierteDatos conversor = new ConvierteDatos();
@@ -41,7 +41,6 @@ public class Principal {
                        7 - Estadísticas
                        8 - Top 10 libros mas descargados
                        9 - Buscar autor por nombre
-                       10 - Buscar autor por otra característica
                                  \s
                        0 - Salir
                    \s
@@ -54,7 +53,7 @@ public class Principal {
                 opcion = teclado.nextInt();
                 teclado.nextLine();
             } catch (InputMismatchException e) {
-                System.out.println("Por favor, ingrese un número válido.");
+                System.out.println("Solo se aceptan caracteres numéricos.");
                 teclado.nextLine();
                 continue;
             }
@@ -87,9 +86,6 @@ public class Principal {
                 case 9:
                     buscarAutorPorNombre();
                     break;
-                case 10:
-                    buscarAutorPorCaracteristica();
-                    break;
                 case 0:
                     System.out.println("¡Gracias por utilizar nuestra aplicación!");
                     break;
@@ -102,106 +98,152 @@ public class Principal {
     private void agregarLibro() {
         System.out.println("Ingrese el título del libro que deseas agregar a la biblioteca:");
         var tituloBuscado = teclado.nextLine();
-        var json = consumoAPI.obtenerDatos(URL_BASE + "?search=" + tituloBuscado.replace(" ", "+"));
-        DatosAPI datos = conversor.obtenerDatos(json, DatosAPI.class);
-        Optional<DatosLibro> libroBuscado = datos.libros().stream()
-                .filter(l -> l.titulo().toUpperCase().contains(tituloBuscado.toUpperCase()))
-                .findFirst();
-        if(libroBuscado.isPresent()){
-            DatosLibro datosLibro = libroBuscado.get();
+        try {
+            var json = consumoAPI.obtenerDatos(URL_BASE + "?search=" + tituloBuscado.replace(" ", "+"));
+            DatosAPI datos = conversor.obtenerDatos(json, DatosAPI.class);
+            Optional<DatosLibro> libroBuscado = datos.libros().stream()
+                    .filter(l -> l.titulo().toUpperCase().contains(tituloBuscado.toUpperCase()))
+                    .findFirst();
+            if (libroBuscado.isPresent()) {
+                DatosLibro datosLibro = libroBuscado.get();
 
-            System.out.println("Libro encontrado: " + datosLibro.titulo());
-            System.out.println("Autor: " + datosLibro.autores().get(0).nombre());
+                System.out.println("Libro encontrado: " + datosLibro.titulo());
+                System.out.println("Autor: " + datosLibro.autores().get(0).nombre());
 
-            String nombreAutor = datosLibro.autores().get(0).nombre();
-            Autor autorExistente = autorRepository.findByNombre(nombreAutor)
-                    .orElseGet(() -> {
-                        Autor nuevoAutor = new Autor(datosLibro.autores().get(0));
-                        return autorRepository.save(nuevoAutor);
-                    });
+                String nombreAutor = datosLibro.autores().get(0).nombre();
+                Autor autorExistente = autorRepository.findByNombre(nombreAutor)
+                        .orElseGet(() -> {
+                            Autor nuevoAutor = new Autor(datosLibro.autores().get(0));
+                            return autorRepository.save(nuevoAutor);
+                        });
 
-            String tituloLibro = datosLibro.titulo();
-            Libro libroExistente = libroRepository.findByTitulo(tituloLibro)
-                    .orElseGet(() -> {
-                        Libro nuevoLibro = new Libro(datosLibro);
-                        nuevoLibro.setAutor(autorExistente);
-                        return libroRepository.save(nuevoLibro);
-                    });
-        }else{
-            System.out.println("Título no encontrado");
+                String tituloLibro = datosLibro.titulo();
+                libroRepository.findByTitulo(tituloLibro)
+                        .orElseGet(() -> {
+                            Libro nuevoLibro = new Libro(datosLibro);
+                            nuevoLibro.setAutor(autorExistente);
+                            return libroRepository.save(nuevoLibro);
+                        });
+            } else {
+                System.out.println("Título no encontrado.");
+            }
+        } catch (Exception e) {
+            System.out.println("Algo salió mal, intente nuevamente.");
         }
     }
 
     private void listarLibros() {
         List<Libro> libros = libroRepository.findAll();
-        libros.forEach(System.out::println);
+        if(!libros.isEmpty()){
+            System.out.println("Título/s guardado/s en la biblioteca:\n");
+            libros.forEach(System.out::println);
+        }else {
+            System.out.println("Aún no se han agregado libros a la biblioteca.");
+        }
     }
 
     private void buscarLibrosPorIdioma() {
         System.out.println("Ingrese el idioma que desea buscar:");
         var idioma = teclado.nextLine();
-        var idiomaEsp = Idioma.fromEspanol(idioma);
-        List<Libro> librosPorIdioma = libroRepository.findByIdioma(idiomaEsp);
-        System.out.println("Libros en idioma " + idiomaEsp);
-        librosPorIdioma.forEach(System.out::println);
+        try {
+            var idiomaEsp = Idioma.fromEspanol(idioma);
+            List<Libro> librosPorIdioma = libroRepository.findByIdioma(idiomaEsp);
+            if(!librosPorIdioma.isEmpty()){
+                System.out.println("Libros en idioma " + idiomaEsp + ":");
+                librosPorIdioma.forEach(System.out::println);
+            }else {
+                System.out.println("Aún no se agregaron libros en idioma " + idiomaEsp + ".");
+            }
+        } catch (IllegalArgumentException e) {
+            System.out.println("Idioma no disponible.");
+        }
+
     }
 
     private void ListarAutores() {
         List<Autor> autores = autorRepository.findAll();
-        autores.forEach(System.out::println);
+        if(!autores.isEmpty()){
+            System.out.println("Autor/es de libros guardados en la bibilioteca:");
+            autores.forEach(System.out::println);
+        }else {
+            System.out.println("Aún no se han agregado autores.");
+        }
     }
 
     private void ListarAutoresVivos() {
         System.out.println("Ingrese el año en que desea buscar autores vivos:");
         var fecha = teclado.nextLine();
-        Integer anio = Integer.valueOf(fecha);
-        List<Autor> autores = autorRepository.findByFechaDeNacimientoLessThanEqualAndFechaDeFallecimientoGreaterThanEqualOrFechaDeFallecimientoIsNull(anio, anio);
-        autores.forEach(System.out::println);
+        try {
+            Integer anio = Integer.valueOf(fecha);
+            List<Autor> autores = autorRepository.findByFechaDeNacimientoLessThanEqualAndFechaDeFallecimientoGreaterThanEqualOrFechaDeFallecimientoIsNull(anio, anio);
+            if(!autores.isEmpty()){
+                System.out.println("Autor/es vivos en el año " + anio + ":");
+                autores.forEach(System.out::println);
+            }else {
+                System.out.println("No se encontraron autores vivos para ese año en la base de datos.");
+            }
+        } catch (NumberFormatException e) {
+            System.out.println("Ingrese un año válido");
+        }
     }
 
     private void cantidadLibrosPorIdioma() {
         System.out.println("Ingrese el idioma que desea buscar:");
         var idioma = teclado.nextLine();
-        var idiomaEsp = Idioma.fromEspanol(idioma);
-        List<Libro> librosPorIdioma = libroRepository.findByIdioma(idiomaEsp);
-        var cantidad = librosPorIdioma.stream()
-                .count();
-        System.out.println("Cantidad de libros en idioma " + idioma + ": " + cantidad);
+        try{
+            var idiomaEsp = Idioma.fromEspanol(idioma);
+            List<Libro> librosPorIdioma = libroRepository.findByIdioma(idiomaEsp);
+            var cantidad = (long) librosPorIdioma.size();
+            if(!librosPorIdioma.isEmpty()){
+                System.out.println("Cantidad de libros en idioma " + idioma + ": " + cantidad);
+            }else {
+                System.out.println("Aún no se han agregado libros en idioma " + idioma);
+            }
+        } catch (IllegalArgumentException e) {
+            System.out.println("Idioma no disponible");;
+        }
+
     }
 
     private void mostrarEstadisticas() {
-        var json = consumoAPI.obtenerDatos(URL_BASE);
-        DatosAPI datos = conversor.obtenerDatos(json, DatosAPI.class);
-        DoubleSummaryStatistics est = datos.libros().stream()
-                .filter(l -> l.numeroDeDescargas() > 0)
-                .collect(Collectors.summarizingDouble(DatosLibro::numeroDeDescargas));
-        System.out.println("Promedio de descargas: " + est.getAverage());
-        System.out.println("Cantidad máxima de descargas: " + est.getMax());
-        System.out.println("Cantidad mínima de descargas: " + est.getMin());
-        System.out.println("Cantidad de registros analizados: " + est.getCount());
+        try {
+            var json = consumoAPI.obtenerDatos(URL_BASE);
+            DatosAPI datos = conversor.obtenerDatos(json, DatosAPI.class);
+            DoubleSummaryStatistics est = datos.libros().stream()
+                    .filter(l -> l.numeroDeDescargas() > 0)
+                    .collect(Collectors.summarizingDouble(DatosLibro::numeroDeDescargas));
+            System.out.println("Promedio de descargas: " + est.getAverage());
+            System.out.println("Cantidad máxima de descargas: " + est.getMax());
+            System.out.println("Cantidad mínima de descargas: " + est.getMin());
+            System.out.println("Cantidad de registros analizados: " + est.getCount());
+        } catch (Exception e) {
+            System.out.println("Algo salió mal, intente nuevamente.");
+        }
     }
 
     private void topDiezLibros() {
-        var json = consumoAPI.obtenerDatos(URL_BASE);
-        DatosAPI datos = conversor.obtenerDatos(json, DatosAPI.class);
-        datos.libros().stream()
-                .sorted(Comparator.comparing(DatosLibro::numeroDeDescargas).reversed())
-                .limit(10)
-                .map(l -> "Título: " + l.titulo().toUpperCase() + " - Número de descargas: " + l.numeroDeDescargas().intValue())
-                .forEach(System.out::println);
+        try {
+            var json = consumoAPI.obtenerDatos(URL_BASE);
+            DatosAPI datos = conversor.obtenerDatos(json, DatosAPI.class);
+            datos.libros().stream()
+                    .sorted(Comparator.comparing(DatosLibro::numeroDeDescargas).reversed())
+                    .limit(10)
+                    .map(l -> "Título: " + l.titulo().toUpperCase() + " - Número de descargas: " + l.numeroDeDescargas().intValue())
+                    .forEach(System.out::println);
+        } catch (Exception e) {
+            System.out.println("Algo salió mal, intente nuevamente.");
+        }
+
     }
 
     private void buscarAutorPorNombre() {
         System.out.println("Ingrese el nombre del autor que desea buscar:");
         var nombre = teclado.nextLine();
-        Optional<Autor> autor = autorRepository.findByNombre(nombre);
-        if(autor.isPresent()){
-            System.out.println(autor.get());
+        List<Autor> autores = autorRepository.findByNombreContainingIgnoreCase(nombre);
+        if(!autores.isEmpty()){
+            autores.forEach(System.out::println);
         } else {
             System.out.println("Autor no encontrado");
         }
-    }
-
-    private void buscarAutorPorCaracteristica() {
     }
 }
